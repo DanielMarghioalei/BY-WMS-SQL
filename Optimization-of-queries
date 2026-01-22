@@ -1,0 +1,140 @@
+[SELECT /*+ gather_plan_statistics
+        /*the above force Oracle DB to capture the execution plan and stats of the query*/
+        DISTINCT sl.ordnum ORDER_ID,
+        ship_sts_dsc.lngdsc SHIPMENT_STATUS,
+        s.late_shpdte LATE_SHIP_DATE,
+        s.carcod CARRIER,
+        s.loddte LOADED_DATE,
+        sl.schbat WAVE_ID,
+        trlr_stat_dsc.lngdsc TRAILER_STATUS,
+        trlr.dispatch_dte TRAILER_DISPATCHED_DATE,
+        trlr.trlr_id
+   FROM shipment s
+   left
+   JOIN shipment_line sl
+     ON s.ship_id = sl.ship_id
+   left
+   JOIN stop
+     ON stop.stop_id = s.stop_id
+   left
+   JOIN car_move
+     ON stop.car_move_id = car_move.car_move_id
+   left
+   JOIN trlr
+     ON car_move.trlr_id = trlr.trlr_id
+   LEFT
+   JOIN dscmst trlr_stat_dsc
+     ON trlr_stat_dsc.colval = trlr.trlr_stat
+    AND trlr_stat_dsc.colnam = 'trlr_stat'
+   LEFT
+   JOIN dscmst ship_sts_dsc
+     ON ship_sts_dsc.colval = s.shpsts
+    AND ship_sts_dsc.colnam = 'shpsts'
+  WHERE car_move.car_move_id = 'LD00024717'
+  ORDER BY sl.schbat];
+
+[SELECT *
+        /*this retrieves the execution plan captured above*/
+   FROM
+  TABLE (DBMS_XPLAN.DISPLAY_CURSOR(NULL, NULL, 'ALLSTATS LAST +PEEKED_BINDS +OUTLINE +NOTE'))]
+/*execute the above queries by selecting both of them and clicking on execute seection in LextEdit*/;
+
+/***************************************************************************************************************************************************************/
+
+/*below 2 queries are for available indexes for the SHIPMENT_LINE Tables*/
+[SELECT index_name,
+        column_position,
+        column_name
+   FROM dba_ind_columns
+  WHERE table_owner = 'INSTANCE-USER'
+    AND table_name = 'SHIPMENT_LINE'
+  ORDER BY index_name,
+        column_position];
+
+
+
+[SELECT index_name,
+        column_position,
+        column_name
+   FROM user_ind_columns
+  WHERE table_name = 'SHIPMENT_LINE'
+  ORDER BY index_name,
+        column_position];
+
+/***************************************************************************************************************************************************************/
+
+/*If no index that aligns with your execution is found, you need to create one*/
+[CREATE INDEX stop_car_move
+     ON stop(car_move_id, stop_id)];
+
+
+/***************************************************************************************************************************************************************/
+
+/*Finally - re execute the same query using the below comments, and try NOT to use distinct unless needed - other alternatives would be to subquery it and use ROW_NUMBER() function*/
+[SELECT /*+ gather_plan_statistics
+           leading(car_move trlr trlr_stat_dsc stop s ship_sts_dsc sl)
+           use_nl(s sl)
+           index(sl shipment_line_shipid_ix) */
+        /*the above force Oracle DB to capture the execution plan and stats of the query - then it tells it how to join the selected tables (the order) - then to use nested loops for shipmnet and shipment_line tables
+           finnaly, asking oracle to use a specific index (this was created for this specific query)*/
+        DISTINCT sl.ordnum ORDER_ID,
+        ship_sts_dsc.lngdsc SHIPMENT_STATUS,
+        s.late_shpdte LATE_SHIP_DATE,
+        s.carcod CARRIER,
+        s.loddte LOADED_DATE,
+        sl.schbat WAVE_ID,
+        trlr_stat_dsc.lngdsc TRAILER_STATUS,
+        trlr.dispatch_dte TRAILER_DISPATCHED_DATE,
+        trlr.trlr_id
+   FROM shipment s
+   left
+   JOIN shipment_line sl
+     ON s.ship_id = sl.ship_id
+   left
+   JOIN stop
+     ON stop.stop_id = s.stop_id
+   left
+   JOIN car_move
+     ON stop.car_move_id = car_move.car_move_id
+   left
+   JOIN trlr
+     ON car_move.trlr_id = trlr.trlr_id
+   LEFT
+   JOIN dscmst trlr_stat_dsc
+     ON trlr_stat_dsc.colval = trlr.trlr_stat
+    AND trlr_stat_dsc.colnam = 'trlr_stat'
+   LEFT
+   JOIN dscmst ship_sts_dsc
+     ON ship_sts_dsc.colval = s.shpsts
+    AND ship_sts_dsc.colnam = 'shpsts'
+  WHERE car_move.car_move_id = 'LD00024717'
+  ORDER BY sl.schbat];
+
+[SELECT *
+        /*this retrieves the execution plan captured above*/
+   FROM
+  TABLE (DBMS_XPLAN.DISPLAY_CURSOR(NULL, NULL, 'ALLSTATS LAST +PEEKED_BINDS +OUTLINE +NOTE'))]
+/*execute the above queries by selecting both of them and clicking on execute seection in LextEdit*/;
+
+/***************************************************************************************************************************************************************/
+
+
+/*below is a query user for checking the elapsed time of specific SQLs, such us ours from above*/
+[SELECT sp.sql_id,
+        sp.operation,
+        sp.options,
+        sp.object_name,
+        s.executions,
+        s.elapsed_time / 1e6 AS elapsed_s,
+        s.buffer_gets,
+        s.last_active_time
+   FROM v$sql_plan sp
+   JOIN v$sql s
+     ON s.sql_id = sp.sql_id
+  WHERE sp.object_owner = 'INSTANCE-USER'
+    AND sp.object_name = 'SHIPMENT_LINE'
+    AND sp.operation LIKE 'INDEX%'
+  ORDER BY s.last_active_time DESC FETCH FIRST 50 ROWS ONLY];
+
+/********************************************************************END*****************************************************************************************/
+
