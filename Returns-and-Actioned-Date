@@ -1,0 +1,39 @@
+[select dlytrn.wh_id,
+        dlytrn.actcod,
+        rethdr.rmanum,
+        rethdr.cstnum,
+        rethdr.carcod,
+        rethdr.ret_ship_ref,
+        rethdr.orig_ordnum,
+        retsts_dsc.lngdsc,
+        rethdr.item_count,
+        rethdr.notes,
+        retdtl.lin_num,
+        retdtl.prtnum,
+        retdtl.expqty,
+        retdtl.idnqty,
+        retdtl.lotnum,
+        linsts_dsc.lngdsc,
+        retdtl.orig_ship_ref,
+        retdtl.rcvkey,
+        retdtl.retcod,
+        rethdr.close_dte
+   from dlytrn
+   left
+   join rethdr
+     on dlytrn.ordnum = rethdr.rmanum
+    and dlytrn.wh_id = rethdr.wh_id
+   left
+   join dscmst retsts_dsc
+     on rethdr.retsts = retsts_dsc.colval
+    and retsts_dsc.colnam = 'retsts'
+   left
+   join retdtl
+     on rethdr.rmanum = retdtl.rmanum
+    and rethdr.wh_id = retdtl.wh_id
+   left
+   join dscmst linsts_dsc
+     on retdtl.ret_itm_sts = linsts_dsc.colval
+    and linsts_dsc.colnam = 'ret_itm_sts'
+  where dlytrn.actcod in ('RETORD_CHANGE', 'RETORD_CLOSE')
+    and dlytrn.trndte > trunc(sysdate)];
