@@ -1,3 +1,12 @@
+[/*Purge Policies */
+ SELECT *
+   FROM poldat
+  WHERE polval = 'PURGE-PARAMETERS-DIR'];
+[/*Jobs that perform Purge actions*/
+ select *
+   from job_definition
+  where command like '%purge%'];
+
 /*purge directories command syntax*/
 get purge parameters
  where polval = 'PURGE-PARAMETERS-DIR'
