@@ -31,3 +31,7 @@ execute os command
 /*check memory*/
 execute os command
  where cmd = 'free -mh';
+
+/*Check cups*/
+execute os command
+ where cmd = 'lpstat -t | grep UKMIL4LB45 | wc -l'
