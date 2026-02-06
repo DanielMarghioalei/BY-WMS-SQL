@@ -1,0 +1,127 @@
+[select max(my_new_row) max_row
+   from (select trlr_id,
+                trknum,
+                invnum,
+                close_dte,
+                client_id,
+                supnum,
+                adrnam,
+                prtnum,
+                invlin,
+                invsln,
+                rcvqty,
+                prt_client_id,
+                myrow,
+                row_number() over(partition by myrow
+                                   order by close_dte asc) as my_new_row
+           from (SELECT distinct trlr.trlr_id,
+                        rcvtrk.trknum,
+                        rcvlin.invnum,
+                        trlr.close_dte,
+                        rcvinv.client_id,
+                        supmst.supnum,
+                        adrmst.adrnam,
+                        rcvlin.prtnum,
+                        rcvlin.invlin,
+                        rcvlin.invsln,
+                        rcvlin.rcvqty,
+                        rcvlin.prt_client_id,
+                        dense_rank() over(partition by trlr.close_dte
+                                           order by trlr.close_dte) myrow
+                   FROM trlr
+                   LEFT
+                   JOIN rcvtrk
+                     ON TRLR.trlr_id = rcvtrk.trlr_id
+                   LEFT
+                   JOIN rcvlin
+                     ON rcvtrk.trknum = rcvlin.trknum
+                   left
+                   join rcvinv
+                     on rcvlin.invnum = rcvinv.invnum
+                    and rcvlin.trknum = rcvinv.trknum
+                   LEFT
+                   JOIN inventory_view
+                     ON rcvlin.rcvkey = inventory_view.rcvkey
+                   left
+                   join supmst
+                     on rcvlin.supnum = supmst.supnum
+                    and rcvlin.client_id = supmst.client_id
+                   left
+                   join adrmst
+                     on supmst.adr_id = adrmst.adr_id
+                  WHERE inventory_view.dtlnum IS NOT NULL
+                    and trlr.dispatch_dte > trunc(sysdate)
+                    and trlr.trlr_cod = 'RCV'
+                  order by trlr.close_dte asc))]
+|
+[select trlr_id TRAILER_ID,
+        trknum INBOUND_SHIPMENT_NUMBER,
+        invnum INBOUND_ORDER_NUMBER,
+        close_dte CLOSED_DATE,
+        client_id,
+        supnum SUPPLIER_NUMBER,
+        adrnam SUPPLIER_NAME,
+        prtnum ITEM,
+        invlin LINE_ID,
+        invsln SUB_LINE_ID,
+        rcvqty RECEIVED_QUANTITY,
+        prt_client_id,
+        case when my_new_row between 1
+         and 5 then 'First 5'
+             else 'Last 5'
+        end as first_or_last_5
+   from(select trlr_id,
+            trknum,
+            invnum,
+            close_dte,
+            client_id,
+            supnum,
+            adrnam,
+            prtnum,
+            invlin,
+            invsln,
+            rcvqty,
+            prt_client_id,
+            myrow,
+                row_number() over(partition by myrow
+                                   order by close_dte asc) as my_new_row
+           from (SELECT distinct trlr.trlr_id,
+                        rcvtrk.trknum,
+                        rcvlin.invnum,
+                        trlr.close_dte,
+                        rcvinv.client_id,
+                        supmst.supnum,
+                        adrmst.adrnam,
+                        rcvlin.prtnum,
+                        rcvlin.invlin,
+                        rcvlin.invsln,
+                        rcvlin.rcvqty,
+                        rcvlin.prt_client_id,
+                        dense_rank() over(partition by trlr.close_dte
+                                           order by trlr.close_dte) myrow
+                   FROM trlr
+                   LEFT
+                   JOIN rcvtrk
+                     ON TRLR.trlr_id = rcvtrk.trlr_id
+                   LEFT
+                   JOIN rcvlin
+                     ON rcvtrk.trknum = rcvlin.trknum
+                   left
+                   join rcvinv
+                     on rcvlin.invnum = rcvinv.invnum
+                    and rcvlin.trknum = rcvinv.trknum
+                   LEFT
+                   JOIN inventory_view
+                     ON rcvlin.rcvkey = inventory_view.rcvkey
+                   left
+                   join supmst
+                     on rcvlin.supnum = supmst.supnum
+                    and rcvlin.client_id = supmst.client_id
+                   left
+                   join adrmst
+                     on supmst.adr_id = adrmst.adr_id
+                  WHERE inventory_view.dtlnum IS NOT NULL
+                    and trlr.dispatch_dte > trunc(sysdate)
+                    and trlr.trlr_cod = 'RCV'
+                  order by trlr.close_dte asc))
+  where ((my_new_row between 1 and 5) or (my_new_row between @max_row -4 and @max_row))];
