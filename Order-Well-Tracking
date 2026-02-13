@@ -1,0 +1,106 @@
+[select trunc(ord_line.late_shpdte) late_ship_date,
+        pckwrk_view.schbat WAVE,
+        trlr.trlr_id,
+        trlsts_dsc.lngdsc TRAILER_STATUS,
+        shpsts_dsc.lngdsc SHIPMENT_STATUS,
+        linsts_dsc.lngdsc SHIP_LINE_STATUS,
+        trunc(shipment.alcdte) allocated_date,
+        count(DISTINCT (ord.ordnum)) order_count,
+        sum(ORD_LINE.ordqty) ordered,
+        sum(pckwrk_view.pckqty) in_progress
+   from ord
+   left
+   join ord_line
+     on ord_line.client_id = ord.client_id
+    and ord_line.ordnum = ord.ordnum
+    and ord_line.wh_id = ord.wh_id
+   left
+   join shipment_line
+     on shipment_line.wh_id = ord_line.wh_id
+    and shipment_line.client_id = ord_line.client_id
+    and shipment_line.ordnum = ord_line.ordnum
+    and shipment_line.ordlin = ord_line.ordlin
+    and shipment_line.ordsln = ord_line.ordsln
+    and shipment_line.prtnum = ord_line.prtnum
+    and shipment_line.prt_client_id = ord_line.prt_client_id
+   LEFT
+   JOIN pckwrk_view
+     ON pckwrk_view.client_id = ord_line.client_id
+    and pckwrk_view.wh_id = ord_line.wh_id
+    and pckwrk_view.prtnum = ord_line.prtnum
+    and pckwrk_view.prt_client_id = ord_line.prt_client_id
+    and pckwrk_view.ordnum = ord_line.ordnum
+    and pckwrk_view.ordlin = ord_line.ordlin
+    and pckwrk_view.ordsln = ord_line.ordsln
+   left
+   join shipment
+     on shipment.ship_id = shipment_line.ship_id
+    and pckwrk_view.wh_id = shipment.wh_id
+    and pckwrk_view.ship_id = shipment.ship_id
+   left
+   join stop
+     on stop.stop_id = shipment.stop_id
+   left
+   join car_move
+     on stop.car_move_id = car_move.car_move_id
+   left
+   join trlr
+     on trlr.trlr_id = car_move.trlr_id
+   left
+   join dscmst linsts_dsc
+     on shipment_line.linsts = linsts_dsc.colval
+    and linsts_dsc.colnam = 'linsts'
+   left
+   join dscmst shpsts_dsc
+     on shipment.shpsts = shpsts_dsc.colval
+    and shpsts_dsc.colnam = 'shpsts'
+   left
+   join dscmst trlsts_dsc
+     on trlr.trlr_stat = trlsts_dsc.colval
+    and trlsts_dsc.colnam = 'trlr_stat'
+  where ord_LINE.late_shpdte >= trunc(sysdate -14)
+    and shipment.shpsts <> 'B'
+    AND shipment_line.linsts <> 'B'
+    and ord.wh_id = 'GB_5028'
+    AND trlsts_dsc.lngdsc NOT IN ('Dispatched')
+  group by trlr.trlr_id,
+        pckwrk_view.schbat,
+        trlsts_dsc.lngdsc,
+        linsts_dsc.lngdsc,
+        shpsts_dsc.lngdsc,
+        trunc(ord_line.late_shpdte),
+        trunc(shipment.alcdte)
+ UNION ALL
+ select trunc(ord_line.late_shpdte) late_ship_date,
+        NULL WAVE,
+        NULL trlr_id,
+        NULL TRAILER_STATUS,
+        NULL SHIPMENT_STATUS,
+        NULL SHIP_LINE_STATUS,
+        NULL allocated_date,
+        count(DISTINCT (ord.ordnum)) order_count,
+        sum(ORD_LINE.ordqty) ordered,
+        NULL in_progress
+   from ord
+   left
+   join ord_line
+     on ord_line.client_id = ord.client_id
+    and ord_line.ordnum = ord.ordnum
+    and ord_line.wh_id = ord.wh_id
+  where ord_LINE.late_shpdte >= trunc(sysdate -14)
+    and ord.wh_id = 'GB_5028'
+    AND NOT EXISTS(SELECT 1
+                     FROM shipment_line
+                    WHERE shipment_line.wh_id = ord_line.wh_id
+                      and shipment_line.client_id = ord_line.client_id
+                      and shipment_line.ordnum = ord_line.ordnum
+                      and shipment_line.ordlin = ord_line.ordlin
+                      and shipment_line.ordsln = ord_line.ordsln
+                      and shipment_line.prtnum = ord_line.prtnum
+                      and shipment_line.prt_client_id = ord_line.prt_client_id)
+  GROUP BY trunc(ord_line.late_shpdte)
+  order by 1,
+        3,
+        2,
+        4,
+        5];
