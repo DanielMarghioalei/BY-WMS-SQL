@@ -1,0 +1,94 @@
+/* explain query */
+publish data
+ where statment = "select distinct sl.ordnum ORDER_ID, ship_sts_dsc.lngdsc SHIPMENT_STATUS, s.late_shpdte LATE_SHIP_DATE, s.carcod CARRIER, s.loddte LOADED_DATE, sl.schbat WAVE_ID, trlr_stat_dsc.lngdsc TRAILER_STATUS, trlr.dispatch_dte TRAILER_DISPATCHED_DATE, trlr.trlr_id from shipment s
+ inner
+  join shipment_line sl
+    on s.ship_id = sl.ship_id
+ inner
+  join stop
+    on stop.stop_id = s.stop_id
+ inner
+  join car_move
+    on stop.car_move_id = car_move.car_move_id
+ inner
+  join trlr
+    on car_move.trlr_id = trlr.trlr_id
+  left
+  join dscmst trlr_stat_dsc
+    on trlr.trlr_stat = trlr_stat_dsc.colval
+   and trlr_stat_dsc.colnam = 'trlr_stat'
+  left
+  join dscmst ship_sts_dsc
+    on ship_sts_dsc.colval = s.shpsts
+   and ship_sts_dsc.colnam = 'shpsts'
+ where trlr.trlr_id in ('TRL0051364', 'TRL0051374', 'TRL0051364', 'TRL0051364', 'TRL0051376', 'TRL0051376', 'TRL0051376', 'TRL0051381', 'TRL0051381', 'TRL0051381', 'TRL0051381', 'TRL0051381', 'TRL0051381', 'TRL0051365', 'TRL0051365')
+   and sl.schbat not in ('Warrington_210126W1')
+ order by sl.schbat"
+|
+{
+    [select 1
+       from dual
+      where exists(select 1
+                     from plan_table)] catch(-1403)
+    |
+    [select to_char(ltrim(userenv('sessionid'))) sessionid
+       from dual]
+    |
+    [delete
+       from plan_table
+      where statement_id = @sessionid] catch(-1403)
+    |
+    [explain plan
+        set statement_id = @sessionid for @statment:raw]
+    |
+    [select statement_id,
+            plan_id,
+            timestamp,
+            remarks,
+            operation,
+            options,
+            object_node,
+            object_owner,
+            object_name,
+            object_alias,
+            object_instance,
+            object_type,
+            optimizer,
+            search_columns,
+            id,
+            parent_id,
+            depth,
+            position,
+            cost,
+            cardinality,
+            bytes,
+            other_tag,
+            partition_start,
+            partition_stop,
+            partition_id,
+            other,
+            distribution,
+            cpu_cost,
+            io_cost,
+            temp_space,
+            access_predicates,
+            filter_predicates,
+            projection,
+            time,
+            qblock_name
+       from plan_table
+      where statement_id = @sessionid
+      order by id] >> res
+} catch(@?)
+|
+if (@? = 0)
+{
+    publish data combination
+     where res = @res
+}
+else
+{
+    explain query
+     where query = @statment
+       and dtl_flg = 1
+}
