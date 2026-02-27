@@ -1,0 +1,77 @@
+[SELECT sl_ifd_data_hdr.ifd_data_seq,
+        sl_ifd_data_hdr.evt_data_seq,
+        sl_ifd_data_hdr.ifd_id,
+        sl_ifd_data_hdr.ifd_ver,
+        sl_ifd_data_hdr.sys_id,
+        sl_ifd_data_hdr.dwnld_seq,
+        sl_ifd_data_dtl.ifd_data_dtl_seq,
+        sl_ifd_data_dtl.ifd_seg_id,
+        sl_ifd_data_dtl.ifd_seg_data
+   FROM sl_ifd_data_hdr
+   LEFT
+   JOIN sl_ifd_data_dtl
+     ON sl_ifd_data_hdr.ifd_data_seq = sl_ifd_data_dtl.ifd_data_seq
+  WHERE sl_ifd_data_dtl.ifd_seg_data like '%FM2-P109-010%'
+    and sl_ifd_data_dtl.ins_dt > trunc(sysdate -5)
+    and sl_ifd_data_hdr.ifd_id = 'PART_INB_IFD'
+    and sl_ifd_data_hdr.dwnld_seq = '748812'];
+
+
+[SELECT SL_IFD_SEG.ifd_id,
+        SL_IFD_SEG.ifd_ver,
+        SL_IFD_SEG.ifd_seg_id,
+        SL_IFD_SEG.ifd_seg_descr,
+        SL_IFD_SEG.parent_ifd_id,
+        SL_IFD_SEG.parent_ifd_SEG_id,
+        SL_IFD_FLD.ifd_fld_id,
+        SL_IFD_FLD.ifd_fld_descr,
+        SL_IFD_SEG.ifd_seg_ordr,
+        SL_IFD_FLD.ifd_fld_ordr,
+        sl_ifd_data_hdr.ifd_data_seq,
+        sl_ifd_data_hdr.evt_data_seq,
+        sl_ifd_data_hdr.sys_id,
+        sl_ifd_data_hdr.dwnld_seq,
+        sl_ifd_data_dtl.ifd_data_dtl_seq,
+        sl_ifd_data_dtl.ifd_seg_data
+   FROM SL_IFD_SEG
+   LEFT
+   JOIN SL_IFD_FLD
+     ON SL_IFD_SEG.ifd_id = SL_IFD_FLD.ifd_id
+    AND SL_IFD_SEG.ifd_seg_id = SL_IFD_FLD.ifd_seg_iD
+    AND SL_IFD_SEG.ifd_ver = SL_IFD_FLD.ifd_ver
+   left
+   join sl_ifd_data_hdr
+     on sl_ifd_data_hdr.ifd_id = SL_IFD_SEG.ifd_id
+    and sl_ifd_fld.ifd_ver = sl_ifd_data_hdr.ifd_ver
+   LEFT
+   JOIN sl_ifd_data_dtl
+     ON sl_ifd_data_hdr.ifd_data_seq = sl_ifd_data_dtl.ifd_data_seq
+    and sl_ifd_data_dtl.ifd_seg_id = SL_IFD_SEG.ifd_seg_id
+  WHERE sl_ifd_data_hdr.ifd_data_seq = '12769976'
+    and sl_ifd_data_dtl.ifd_seg_data is not null --and SL_IFD_SEG.ifd_seg_id = 'CTRL_SEG'
+  ORDER BY SL_IFD_SEG.ifd_seg_ordr ASC,
+        sl_ifd_data_dtl.ifd_data_dtl_seq asc,
+        SL_IFD_FLD.ifd_fld_ordr ASC];
+
+
+
+[SELECT SL_IFD_SEG.ifd_id,
+        SL_IFD_SEG.ifd_ver,
+        SL_IFD_SEG.ifd_seg_id,
+        SL_IFD_SEG.ifd_seg_descr,
+        SL_IFD_SEG.parent_ifd_id,
+        SL_IFD_SEG.parent_ifd_SEG_id,
+        SL_IFD_FLD.ifd_fld_id,
+        SL_IFD_FLD.ifd_fld_descr,
+        SL_IFD_SEG.ifd_seg_ordr,
+        SL_IFD_FLD.ifd_fld_ordr
+   FROM SL_IFD_SEG
+   LEFT
+   JOIN SL_IFD_FLD
+     ON SL_IFD_SEG.ifd_id = SL_IFD_FLD.ifd_id
+    AND SL_IFD_SEG.ifd_seg_id = SL_IFD_FLD.ifd_seg_iD
+    AND SL_IFD_SEG.ifd_ver = SL_IFD_FLD.ifd_ver
+  WHERE SL_IFD_FLD.ifd_id = 'ORDER_INB_IFD'
+    AND sl_ifd_fld.ifd_ver = '2017.1'
+  ORDER BY SL_IFD_SEG.ifd_seg_ordr ASC,
+        SL_IFD_FLD.ifd_fld_ordr ASC];
